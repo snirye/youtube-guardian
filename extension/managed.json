@@ -1,0 +1,7 @@
+{
+  "type": "object",
+  "properties": {
+    "apiToken": {"type": "string", "title": "Local API token"},
+    "port": {"type": "integer", "title": "Local API port"}
+  }
+}

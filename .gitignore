@@ -5,3 +5,5 @@ guardian.sqlite*
 node_modules/
 test-results/
 playwright-report/
+/extension/dist/
+/release/

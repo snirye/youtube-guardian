@@ -16,21 +16,27 @@ import (
 	"github.com/snirye/youtube-guardian/backend/internal/api"
 	"github.com/snirye/youtube-guardian/backend/internal/config"
 	"github.com/snirye/youtube-guardian/backend/internal/database"
+	"github.com/snirye/youtube-guardian/backend/internal/store"
+	"github.com/snirye/youtube-guardian/backend/internal/telegram"
 )
 
 func main() {
 	configPath := flag.String("config", "guardian.json", "path to the backend JSON configuration")
 	flag.Parse()
 
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
-	if err := run(ctx, *configPath); err != nil {
+	if err := start(*configPath); err != nil {
 		log.Print(err)
 		os.Exit(1)
 	}
 }
 
-func run(ctx context.Context, configPath string) error {
+func foreground(configPath string) error {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	return run(ctx, configPath, nil, nil)
+}
+
+func run(ctx context.Context, configPath string, telegramTransport http.RoundTripper, ready func()) error {
 	cfg, err := config.Load(configPath)
 	if err != nil {
 		return err
@@ -47,8 +53,32 @@ func run(ctx context.Context, configPath string) error {
 	}
 	defer listener.Close()
 
+	data := store.Store{DB: db}
+	workers, cancelWorkers := context.WithCancel(ctx)
+	defer cancelWorkers()
+	if cfg.TelegramToken != "" {
+		stopped := make(chan struct{})
+		go func() {
+			defer close(stopped)
+			telegram.New(data, cfg.TelegramToken, cfg.ParentID, telegramTransport).Run(workers)
+		}()
+		defer func() {
+			cancelWorkers()
+			<-stopped
+		}()
+	}
+	pruned := make(chan struct{})
+	go func() {
+		defer close(pruned)
+		pruneActivity(workers, data, cfg.RetentionDays)
+	}()
+	defer func() {
+		cancelWorkers()
+		<-pruned
+	}()
+
 	server := &http.Server{
-		Handler:           api.New(db, cfg.APIToken),
+		Handler:           api.New(db, cfg.APIToken, api.Routes(data)),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      10 * time.Second,
@@ -60,6 +90,10 @@ func run(ctx context.Context, configPath string) error {
 	go func() {
 		result <- server.Serve(listener)
 	}()
+
+	if ready != nil {
+		ready()
+	}
 
 	select {
 	case err := <-result:
@@ -75,5 +109,20 @@ func run(ctx context.Context, configPath string) error {
 			return err
 		}
 		return nil
+	}
+}
+
+func pruneActivity(ctx context.Context, data store.Store, days int) {
+	ticker := time.NewTicker(time.Hour)
+	defer ticker.Stop()
+	for ctx.Err() == nil {
+		if err := data.Prune(ctx, time.Now().AddDate(0, 0, -days)); err != nil && ctx.Err() == nil {
+			log.Printf("prune activity events: %v", err)
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+		}
 	}
 }

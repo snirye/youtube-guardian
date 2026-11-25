@@ -6,6 +6,9 @@ import _ "embed"
 //go:embed 001_foundation.sql
 var foundation string
 
+//go:embed 002_workflows.sql
+var workflows string
+
 func Ordered() []string {
-	return []string{foundation}
+	return []string{foundation, workflows}
 }

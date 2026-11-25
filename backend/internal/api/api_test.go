@@ -37,10 +37,36 @@ func TestHealth(t *testing.T) {
 			req := httptest.NewRequest(tc.method, "/health", nil)
 			req.Header.Set("Authorization", tc.authorization)
 			res := httptest.NewRecorder()
-			New(healthStub{err: tc.databaseError}, "test-token").ServeHTTP(res, req)
+			New(healthStub{err: tc.databaseError}, "test-token", nil).ServeHTTP(res, req)
 			if res.Code != tc.status || res.Body.String() != tc.body {
 				t.Fatalf("response = %d %q, want %d %q", res.Code, res.Body.String(), tc.status, tc.body)
 			}
 		})
+	}
+}
+
+func TestExtensionOrigin(t *testing.T) {
+	handler := New(healthStub{}, "test-token", nil)
+	for _, tc := range []struct {
+		method, origin string
+		status         int
+	}{
+		{http.MethodGet, extensionOrigin, http.StatusOK},
+		{http.MethodOptions, extensionOrigin, http.StatusNoContent},
+		{http.MethodGet, "https://www.youtube.com", http.StatusForbidden},
+		{http.MethodOptions, "chrome-extension://other", http.StatusForbidden},
+	} {
+		req := httptest.NewRequest(tc.method, "/health", nil)
+		req.Header.Set("Origin", tc.origin)
+		req.Header.Set("Authorization", "Bearer test-token")
+		res := httptest.NewRecorder()
+		handler.ServeHTTP(res, req)
+		if res.Code != tc.status {
+			t.Fatalf("%s %s status = %d, want %d", tc.method, tc.origin, res.Code, tc.status)
+		}
+		if allowed := res.Header().Get("Access-Control-Allow-Origin"); (tc.origin == extensionOrigin && allowed != extensionOrigin) ||
+			(tc.origin != extensionOrigin && allowed != "") {
+			t.Fatalf("%s received unexpected CORS origin %q", tc.origin, allowed)
+		}
 	}
 }

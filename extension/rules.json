@@ -1,0 +1,20 @@
+[
+  {
+    "id": 1,
+    "priority": 1,
+    "action": {"type": "block"},
+    "condition": {
+      "initiatorDomains": ["youtube.com", "youtube-nocookie.com"],
+      "requestDomains": ["googlevideo.com"]
+    }
+  },
+  {
+    "id": 2,
+    "priority": 1,
+    "action": {"type": "block"},
+    "condition": {
+      "initiatorDomains": ["youtube.com", "youtube-nocookie.com"],
+      "regexFilter": "^https://[^/]+[.]youtube[.]com/(videoplayback|api/manifest)([/?]|$)"
+    }
+  }
+]

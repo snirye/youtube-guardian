@@ -9,15 +9,21 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 )
 
 const DefaultPort = 8765
 
+var telegramToken = regexp.MustCompile(`^[0-9]+:[A-Za-z0-9_-]{15,}$`)
+
 type Config struct {
-	Port         int    `json:"port"`
-	DatabasePath string `json:"database_path"`
-	APIToken     string `json:"api_token"`
+	Port          int    `json:"port"`
+	DatabasePath  string `json:"database_path"`
+	APIToken      string `json:"api_token"`
+	TelegramToken string `json:"telegram_bot_token"`
+	ParentID      int64  `json:"parent_telegram_user_id"`
+	RetentionDays int    `json:"retention_days"`
 }
 
 func Load(path string) (Config, error) {
@@ -32,14 +38,14 @@ func Load(path string) (Config, error) {
 	}
 	defer file.Close()
 
-	cfg := Config{Port: DefaultPort, DatabasePath: "guardian.sqlite"}
+	cfg := Config{Port: DefaultPort, DatabasePath: "guardian.sqlite", RetentionDays: 30}
 	decoder := json.NewDecoder(file)
 	decoder.DisallowUnknownFields()
 	// Decode through a pointer so a top-level null can be rejected.
 	loaded := &cfg
 	if err := decoder.Decode(&loaded); err != nil {
 		// JSON decoding errors can include supplied configuration values.
-		return Config{}, errors.New("configuration must be a JSON object with port, database_path, and api_token fields")
+		return Config{}, errors.New("configuration contains invalid JSON or unrecognized fields")
 	}
 	if loaded == nil || decoder.Decode(new(any)) != io.EOF {
 		return Config{}, errors.New("configuration must contain exactly one JSON object")
@@ -56,6 +62,14 @@ func Load(path string) (Config, error) {
 	}
 	if _, err := hex.DecodeString(cfg.APIToken); err != nil {
 		return Config{}, errors.New("api_token must be a 64-character hexadecimal string")
+	}
+	if cfg.RetentionDays < 1 || cfg.RetentionDays > 3650 {
+		return Config{}, errors.New("retention_days must be between 1 and 3650")
+	}
+	if cfg.TelegramToken != "" || cfg.ParentID != 0 {
+		if cfg.ParentID <= 0 || !telegramToken.MatchString(cfg.TelegramToken) {
+			return Config{}, errors.New("set both a valid telegram_bot_token and a positive parent_telegram_user_id")
+		}
 	}
 	if !filepath.IsAbs(cfg.DatabasePath) {
 		cfg.DatabasePath = filepath.Join(filepath.Dir(path), cfg.DatabasePath)

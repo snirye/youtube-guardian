@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<meta charset="utf-8">
+<title>YouTube Guardian · בדיקת דפדפן</title>
+<style>
+:root { font: 18px/1.45 system-ui; background: #151413; color: #fffaf0; }
+body { margin: 35px auto; width: min(86vw, 900px); }
+header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #5c544c; padding-bottom: 12px; }
+header strong { font-size: 1.25rem; }
+header small { color: #c9bcad; }
+nav { margin: 18px 0; display: flex; gap: 18px; align-items: center; }
+a { color: #ffdd99; }
+#movie_player { position: relative; background: #070707; aspect-ratio: 16 / 8; border: 1px solid #51483d; border-radius: 12px; overflow: hidden; display: grid; place-items: center; }
+video { position: absolute; inset: 0; background: #070707; width: 100%; height: 100%; }
+#status { color: #d7c7b5; }
+#scene { margin: 14px 0; }
+</style>
+<body>
+<header><strong>YouTube Guardian</strong><small>ניסוי ב־Chrome • נגן מקומי עם מבנה של YouTube</small></header>
+<nav>
+  <a href="/watch?v=approvedabc" data-spa>סרטון ראשון</a>
+  <a href="/watch?v=unknownxyza" data-spa>סרטון שני</a>
+  <ytd-guide-entry-renderer><a href="/shorts">Shorts</a></ytd-guide-entry-renderer>
+</nav>
+<h1 id="scene"></h1>
+<div id="movie_player">
+  <p>הנגן ממתין לסרטון</p>
+  <video muted autoplay controls playsinline></video>
+</div>
+<p id="status"></p>
+<ytd-reel-shelf-renderer>דוגמה לאזור Shorts</ytd-reel-shelf-renderer>
+<script>
+const player = document.querySelector('#movie_player');
+const video = document.querySelector('video');
+const versions = {
+  approvedabc: { channelId: 'UC' + 'a'.repeat(22), author: 'ערוץ לדוגמה', asset: 'asset-approved' },
+  unknownxyza: { channelId: 'UC' + 'b'.repeat(22), author: 'ערוץ נוסף', asset: 'asset-unknown' },
+};
+let current;
+let frames = 0;
+let requestCount = 0;
+let attempt = 0;
+const onFrame = () => { frames++; video.requestVideoFrameCallback(onFrame); };
+video.requestVideoFrameCallback(onFrame);
+player.getPlayerResponse = () => current;
+player.getVideoData = () => ({video_id: current?.videoDetails.videoId});
+window.observe = () => ({ time: video.currentTime, frames, paused: video.paused, muted: video.muted, requestCount });
+window.describe = message => { document.querySelector('#scene').textContent = message; };
+setInterval(() => {
+  document.querySelector('#status').textContent = 'זמן ניגון ' + video.currentTime.toFixed(2) + ' שניות · ' + frames + ' פריימים';
+}, 100);
+function openVideo() {
+  const url = new URL(location.href);
+  const id = url.searchParams.get('v') ?? url.pathname.split('/')[2];
+  const data = versions[id];
+  if (!data) return;
+  const { channelId, author, asset } = data;
+  window.describe(author);
+  const media = 'https://r1.googlevideo.com/videoplayback?itag=43&id=' + asset;
+  current = { videoDetails: { videoId: id, channelId, author }, streamingData: { formats: [{url: media}] } };
+  frames = 0;
+  video.autoplay = true;
+  video.src = media;
+  video.play().catch(() => {});
+  const call = ++attempt;
+  fetch(media).then(() => { if (call === attempt) requestCount++; }).catch(() => {});
+}
+for (const link of document.querySelectorAll('[data-spa]')) {
+  link.addEventListener('click', event => {
+    event.preventDefault();
+    document.dispatchEvent(new Event('yt-navigate-start'));
+    history.pushState(null, '', link.href);
+    openVideo();
+    document.dispatchEvent(new Event('yt-navigate-finish'));
+  });
+}
+openVideo();
+</script>
