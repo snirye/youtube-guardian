@@ -99,7 +99,10 @@ const unavailable: Check = { decision: 'unavailable', version: null, blockShorts
 
 async function currentFrame(tabId: number, frameId: number, documentId: string | undefined, target?: Target) {
   const frame = await chrome.webNavigation.getFrame({ tabId, frameId }).catch(() => null)
-  return !!frame && frame.documentId === documentId && sameTarget(targetOf(frame.url), target)
+  if (!frame || frame.documentId !== documentId) return false
+  // In an SPA, the top-level tab URL can advance while the original document remains.
+  const url = frameId === 0 ? (await chrome.tabs.get(tabId).catch(() => null))?.url : frame.url
+  return !!url && sameTarget(targetOf(url), target)
 }
 
 async function check(tabId: number, frameId: number, documentId: string | undefined, target: Target | undefined,
@@ -144,28 +147,41 @@ chrome.webNavigation.onHistoryStateUpdated.addListener(({ tabId, frameId }) => {
 chrome.runtime.onMessage.addListener((msg, sender, respond) => {
   if (sender.id !== chrome.runtime.id || sender.tab?.id === undefined || sender.frameId === undefined || !sender.url
       || !msg || typeof msg !== 'object') return
+  const tabId = sender.tab.id
   const url = new URL(sender.url)
   if (url.protocol !== 'https:' || !supportedHost(url.hostname)) return
-  const target = targetOf(sender.url)
   if (msg.type === 'revoke') {
-    if (sender.frameId === 0) clear(sender.tab.id)
+    if (sender.frameId === 0) clear(tabId)
     return
   }
+  if (typeof msg.href !== 'string') return
+  let href: URL
+  try {
+    href = new URL(msg.href)
+  } catch {
+    return
+  }
+  if (href.origin !== url.origin) return
+  const target = targetOf(href.href)
   if (msg.type === 'check') {
     const identity = validIdentity(msg.identity) && msg.identity.videoId === target?.id ? msg.identity : undefined
-    void check(sender.tab.id, sender.frameId, sender.documentId, target, identity)
+    void check(tabId, sender.frameId, sender.documentId, target, identity)
       .then(respond, () => respond(unavailable))
     return true
   }
   if (sender.frameId !== 0 || !target) return
+  const isCurrent = () => currentFrame(tabId, 0, sender.documentId, target)
   if (msg.type === 'request' && validIdentity(msg.identity) && msg.identity.videoId === target.id) {
     const { channelId, channelName, videoId } = msg.identity
-    void request('/requests', { channelId, channelName, videoId }).then(response => respond(response.ok), () => respond(false))
+    void isCurrent().then(async current => current && (await request('/requests', { channelId, channelName, videoId })).ok)
+      .then(respond, () => respond(false))
     return true
   }
   if (msg.type === 'event' && msg.videoId === target.id && videoPattern.test(msg.videoId)) {
     const { channelId, channelName, videoId, decision, version } = msg
-    void request('/events', { channelId, channelName, videoId, decision, version }).catch(() => undefined)
+    void isCurrent().then(current => {
+      if (current) return request('/events', { channelId, channelName, videoId, decision, version })
+    }).catch(() => undefined)
   }
 })
 

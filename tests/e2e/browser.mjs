@@ -145,10 +145,10 @@ try {
   const approved = await snapshot()
   assert.equal(approved.channels[0].decision, 'approved')
   assert.ok(approved.version > initialVersion)
-  if (demo) await page.waitForTimeout(1200)
+  if (demo) await page.waitForTimeout(2000)
 
   await page.getByRole('link', { name: 'סרטון שני' }).click()
-  await overlay.getByText(/ערוץ נוסף/).waitFor()
+  await page.locator('#guardian-overlay[data-decision=unknown]').getByText(/ערוץ נוסף/).waitFor()
   await page.evaluate(() => window.describe('4. מעבר לסרטון אחר — האישור הקודם אינו עובר'))
   assert.equal(await page.evaluate(() => window.observe().time), 0)
   assert.equal(await page.evaluate(() => window.observe().frames), 0)
@@ -175,8 +175,10 @@ try {
   assert.equal(calls.filter(call => call.method === 'sendMessage' && call.data.reply_markup).length, 1)
   await beat(demo)
 
+  await page.evaluate(() => window.describe('חידוש האישור לפני בדיקת ניתוק השרת'))
   emit({ message: { from: parent, chat, text: `/allow ${firstChannel}` } })
   await overlay.waitFor({ state: 'detached' })
+  await page.waitForFunction(() => !window.observe().paused)
   await stopBackend()
   await overlay.getByText(/לא ניתן לאמת/).waitFor()
   await page.evaluate(() => window.describe('6. השרת אינו זמין — החסימה חוזרת'))

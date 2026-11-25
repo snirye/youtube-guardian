@@ -46,7 +46,7 @@ function makeOverlay() {
     const current = generation
     submittingChannels.add(requested.channelId)
     render(target, state, requested)
-    const ok = await chrome.runtime.sendMessage({ type: 'request', identity: requested }).catch(() => false)
+    const ok = await chrome.runtime.sendMessage({ type: 'request', href: location.href, identity: requested }).catch(() => false)
     submittingChannels.delete(requested.channelId)
     if (ok) requestedChannels.add(requested.channelId)
     if (current !== generation) return
@@ -115,7 +115,7 @@ function logPlayback(check: Check) {
   if (lastEvent === key) return
   lastEvent = key
   void chrome.runtime.sendMessage({
-    type: 'event', videoId: target.id, channelId: identity?.channelId ?? '',
+    type: 'event', href: location.href, videoId: target.id, channelId: identity?.channelId ?? '',
     channelName: identity?.channelName ?? '', decision, version: check.version,
   }).catch(() => undefined)
 }
@@ -137,7 +137,7 @@ async function refresh() {
     identity = inspect()
     if (previousIdentity && (previousIdentity.channelId !== identity?.channelId
         || previousIdentity.assets.join() !== identity.assets.join())) revoke()
-    const check: Check = await chrome.runtime.sendMessage({ type: 'check', identity }).catch(() => undefined)
+    const check: Check = await chrome.runtime.sendMessage({ type: 'check', href: location.href, identity }).catch(() => undefined)
       ?? { decision: 'unavailable', version: null, blockShorts: true }
     if (generation !== current || !sameTarget(target, targetOf(location.href))) return
     document.documentElement?.toggleAttribute('data-guardian-show-shorts', !check.blockShorts)
