@@ -1,5 +1,7 @@
 # Development milestones
 
+The current MVP includes the code for all eight milestones. See [verification](VERIFICATION.md) for automated coverage and manual checks that remain open.
+
 ## 1. Foundation
 
 1. Initialize the Go module and the backend entry point. Load and validate configuration at startup, resolve the database path relative to the configuration file, and keep the HTTP listener on IPv4 loopback.

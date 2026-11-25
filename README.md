@@ -1,52 +1,45 @@
 # YouTube Guardian
 
-YouTube Guardian is being developed as a local parental-control system for a shared Windows computer. The planned Chrome extension will allow playback only from approved YouTube channels. Parents will manage approvals through Telegram.
+YouTube Guardian pairs a Chrome MV3 extension with a local Windows service. The extension lets the child browse YouTube, then checks the current video's channel before playback. A private Telegram bot manages channel approvals. The backend stores settings and activity in SQLite and uses an outbound Telegram connection.
 
-The foundation provides a standalone Go backend, a SQLite schema, and an authenticated health endpoint. Browser enforcement and Telegram integration are upcoming milestones.
-
+- [Windows installation and removal](docs/WINDOWS.md)
+- [Browser tests and enforcement limits](docs/VERIFICATION.md)
 - [Implementation plan](docs/IMPLEMENTATION_PLAN.md)
 - [Development milestones](docs/DEVELOPMENT.md)
-- [Pre-playback feasibility probe](tests/playback-probe/README.md)
 
-## Run the backend locally
+## What the child sees
 
-Use Go 1.25.8 or newer. SQLite is embedded in the binary, so a separate SQLite installation or C compiler is unnecessary.
+A video from an unknown channel stays blocked and shows a Hebrew approval button. An explicit request sends a message to the parent. Approving it updates Chrome without restarting the browser. Blocked channels cannot generate another request. Regular blocked visits are recorded locally.
 
-Create a `guardian.json` file in a private directory. Generate a random 32-byte token and encode it as 64 hexadecimal characters. The path below is relative to `guardian.json`, and SQLite creates the database on first startup. An explicitly configured database directory must already exist.
+The default setting also hides supported Shorts surfaces and blocks direct Shorts URLs. The parent can change Shorts filtering with `/shorts_on` and `/shorts_off`. Turning off Shorts filtering still requires a channel approval.
+
+## Development
+
+Use Go 1.25.8 or newer and Node.js 20 or newer. Build the extension from the repository root.
+
+```sh
+npm --prefix extension ci
+npm --prefix extension run check
+npm --prefix extension run build
+```
+
+For a foreground backend, create a private `guardian.json` with the fields below. Generate the API token with `openssl rand -hex 32` or a system cryptographic random generator. If you omit both Telegram settings, the backend starts with an empty approval list and without a bot connection.
 
 ```json
 {
+  "api_token": "REPLACE_WITH_A_RANDOM_64_CHARACTER_HEX_TOKEN",
   "port": 8765,
   "database_path": "guardian.sqlite",
-  "api_token": "REPLACE_WITH_A_RANDOM_64_CHARACTER_HEX_TOKEN"
+  "retention_days": 30
 }
 ```
 
-From the repository root in PowerShell 7 on Windows, the following creates a config in the current account's local application data directory if one is absent and starts the backend in the foreground.
+The default database path is relative to `guardian.json`. The backend creates the SQLite database and applies embedded migrations at startup. Run the service in the foreground from `backend/`.
 
-```powershell
-$guardianDir = Join-Path $env:LOCALAPPDATA 'YouTubeGuardian'
-$guardianConfig = Join-Path $guardianDir 'guardian.json'
-New-Item -ItemType Directory -Force $guardianDir | Out-Null
-if (-not (Test-Path $guardianConfig)) {
-    $token = [Convert]::ToHexString([System.Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
-    @{ api_token = $token } | ConvertTo-Json | Set-Content -Encoding utf8 $guardianConfig
-}
-Set-Location backend
-go run ./cmd/guardian -config $guardianConfig
+```sh
+go run ./cmd/guardian -config /path/to/guardian.json
 ```
 
-From another PowerShell window, check the running backend.
+Load `extension/dist` through **Load unpacked** in `chrome://extensions`, then enter the API token and port in the extension options. The token authenticates access to `http://127.0.0.1`. An authenticated `GET /health` returns HTTP 200 with `{"status":"ok"}` when the database is healthy.
 
-```powershell
-$path = Join-Path $env:LOCALAPPDATA 'YouTubeGuardian/guardian.json'
-$cfg = Get-Content -Raw $path | ConvertFrom-Json
-$port = $cfg.port ?? 8765
-Invoke-RestMethod "http://127.0.0.1:${port}/health" -Headers @{ Authorization = "Bearer $($cfg.api_token)" }
-```
-
-On Linux or macOS, generate a token with `openssl rand -hex 32` and run `go run ./cmd/guardian -config /path/to/guardian.json` from `backend/`. Send `GET /health` with the token in the `Authorization: Bearer <token>` header. A healthy backend returns HTTP 200 with `{"status":"ok"}`. Missing or invalid credentials return 401, and a failed database check returns 503. The backend listens on `127.0.0.1`. Press Ctrl+C to stop it.
-
-## Develop and test
-
-Run `go test ./...` and `go vet ./...` from `backend/`. The initial [migration](backend/migrations/001_foundation.sql) creates explicit channel decisions, approval requests, activity events, and a configuration version starting at 1. An unknown channel has no row in `channels`. SQLite enforces one pending request per channel and runs migrations when the backend opens the database.
+Run `go test ./...` and `go vet ./...` from `backend/`. See [verification](docs/VERIFICATION.md) for the automated Chrome suite and the manual checklist for a Windows deployment.
