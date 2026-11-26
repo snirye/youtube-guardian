@@ -29,7 +29,7 @@ if (Get-Service $service -ErrorAction SilentlyContinue) {
     throw 'The YouTube Guardian service already exists. Run uninstall.ps1 before reinstalling.'
 }
 if (!(Test-Path -LiteralPath $binary -PathType Leaf) -or !(Test-Path -LiteralPath (Join-Path $extension 'manifest.json'))) {
-    throw 'Run scripts/build.ps1 from the repository first.'
+    throw 'Extract the complete Windows package, or run scripts/build.ps1 from the source checkout.'
 }
 if ((Test-Path -LiteralPath $data) -ne $ReuseConfiguration.IsPresent) {
     throw 'Use -ReuseConfiguration when reinstalling with existing service data. A new install needs an unused data directory.'

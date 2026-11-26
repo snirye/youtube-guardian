@@ -1,6 +1,20 @@
 # Windows installation
 
-Run on Windows 10 or 11 with a separate administrator account and a standard Windows account for the child. For a build from source, install Git, Go 1.25.8 or newer, Node.js 20 or newer, PowerShell 7.3 or newer, and Chrome 120 or newer.
+Run on Windows 10 or 11 with a separate administrator account and a standard Windows account for the child. The prebuilt Windows x64 package requires PowerShell 7.3 or newer and Chrome 120 or newer.
+
+## Download the Windows x64 package
+
+1. Sign in to GitHub and open the [Build Windows package workflow](https://github.com/snirye/youtube-guardian/actions/workflows/build-windows.yml). Open a successful run. Artifacts stay available for 30 days to users with access to the repository.
+2. In the run summary under **Artifacts**, download `youtube-guardian-windows-x64.zip`. It contains the compiled service, Chrome extension, installation scripts, and this guide.
+3. Unblock and extract the downloaded ZIP into a local folder. This lets PowerShell run the extracted scripts with the process-level `RemoteSigned` policy.
+
+```powershell
+Unblock-File .\youtube-guardian-windows-x64.zip
+Expand-Archive .\youtube-guardian-windows-x64.zip .\youtube-guardian
+Set-Location .\youtube-guardian
+```
+
+To build from source instead, install Git, Go 1.25.8 or newer, and Node.js 20 or newer. Run `./scripts/build.ps1` from the repository root. Run `./scripts/package.ps1` if you also need a ZIP.
 
 ## Prepare Telegram
 
@@ -24,10 +38,9 @@ Only the configured user ID can manage channels, and commands and buttons are ac
 
 ## Install the service and load Chrome
 
-1. In PowerShell 7, open the repository root and run `./scripts/build.ps1`.
-2. Open PowerShell 7 **as administrator** in the repository root and run `./scripts/install.ps1`. Enter the parent's Telegram ID and the bot token when prompted. The installer validates the local API and registers `YouTubeGuardian` for automatic startup and recovery.
-3. Sign in to the child's standard Windows account. In Chrome, open `chrome://extensions`, turn on **Developer mode**, and use **Load unpacked** to select the `YouTubeGuardian\extension` folder under Program Files. The installer prints the exact path. In `chrome://policy`, select **Reload policies** and check that the extension receives its managed settings. Restart Chrome or reload existing YouTube tabs after first installation.
-4. Send `/status` to the bot. With Chrome open, allow roughly 30 seconds for a heartbeat. Then use the [manual verification checklist](VERIFICATION.md).
+1. Open PowerShell 7 **as administrator** in the extracted package folder or the built repository root. Run `pwsh -NoProfile -ExecutionPolicy RemoteSigned -File ./scripts/install.ps1`. Enter the parent's Telegram ID and the bot token when prompted. The installer validates the local API and registers `YouTubeGuardian` for automatic startup and recovery.
+2. Sign in to the child's standard Windows account. In Chrome, open `chrome://extensions`, turn on **Developer mode**, and use **Load unpacked** to select the `YouTubeGuardian\extension` folder under Program Files. The installer prints the exact path. In `chrome://policy`, select **Reload policies** and check that the extension receives its managed settings. Restart Chrome or reload existing YouTube tabs after first installation.
+3. Send `/status` to the bot. With Chrome open, allow roughly 30 seconds for a heartbeat. Then use the [manual verification checklist](VERIFICATION.md).
 
 The service runs as LocalService. The configuration and SQLite database are under `%ProgramData%\YouTubeGuardian` with access restricted to administrators, SYSTEM, and LocalService. The Chrome policy distributes only the local API token and port. The service accepts local API requests on IPv4 loopback and makes outbound HTTPS requests to Telegram, so it needs no router port forwarding.
 
@@ -51,7 +64,7 @@ A request notification includes the channel, video, time and Approve/Reject butt
 
 ## Remove or reinstall
 
-From an elevated PowerShell 7 session run `./scripts/uninstall.ps1`. Remove the extension through `chrome://extensions` in each installed profile. The script retains the database and configuration. To reinstall with these, rebuild and run `./scripts/install.ps1 -ReuseConfiguration`. After removing the extension, administrators can delete the installed program directory if desired.
+From an elevated PowerShell 7 session run `./scripts/uninstall.ps1`. Remove the extension through `chrome://extensions` in each installed profile. The script retains the database and configuration. To reinstall with these, extract a new package or rebuild from source, then run `./scripts/install.ps1 -ReuseConfiguration`. After removing the extension, administrators can delete the installed program directory if desired.
 
 ## Browser enforcement limits
 
