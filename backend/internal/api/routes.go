@@ -73,6 +73,19 @@ func Routes(data store.Store) func(*http.ServeMux) {
 			w.WriteHeader(http.StatusNoContent)
 		})
 
+		mux.HandleFunc("GET /heartbeat", func(w http.ResponseWriter, r *http.Request) {
+			observation, err := data.LastHeartbeat(r.Context())
+			if err != nil {
+				storageError(w, err)
+				return
+			}
+			if observation == nil || !observation.Version.Valid {
+				reply(w, http.StatusOK, map[string]any{"connectedAt": nil})
+				return
+			}
+			reply(w, http.StatusOK, map[string]any{"connectedAt": observation.At})
+		})
+
 		mux.HandleFunc("POST /heartbeat", func(w http.ResponseWriter, r *http.Request) {
 			var in store.Heartbeat
 			if !read(w, r, &in) {

@@ -1,12 +1,18 @@
 # Windows installation
 
-Run on Windows 10 or 11 with a separate administrator account and a standard Windows account for the child. The prebuilt Windows x64 package requires PowerShell 7.3 or newer and Chrome 120 or newer.
+Use Windows 10 or 11 (x64), Chrome 120 or newer, a separate administrator account, and a standard Windows account for the child.
 
-## Download the Windows x64 package
+## Install with the setup wizard
 
-1. Open the [GitHub Releases page](https://github.com/snirye/youtube-guardian/releases) and choose the preview release you want to install.
-2. Under **Assets**, download `youtube-guardian-windows-x64.zip`. It contains the compiled service, Chrome extension, installation scripts, and this guide.
-3. Unblock and extract the downloaded ZIP into a local folder. This lets PowerShell run the extracted scripts with the process-level `RemoteSigned` policy.
+1. Download `YouTubeGuardianSetup.exe` from **Assets** on the [GitHub Releases page](https://github.com/snirye/youtube-guardian/releases). For a development build, use the installer artifact from a [successful GitHub Actions run](https://github.com/snirye/youtube-guardian/actions/workflows/build-windows.yml).
+2. Open the installer and accept the administrator prompt. For a new installation, create a dedicated bot through [BotFather](https://t.me/BotFather) using `/newbot`. Paste the token into the wizard, scan the QR code with the parent's phone, and tap **Start** in the private chat. Confirm the parent account shown in the wizard.
+3. With the wizard open, switch to the child's Windows account if needed. Follow the displayed Chrome steps to load the extension and reload policies. If the extension is already loaded, reload it after the upgrade. Return to the wizard and choose **Check Chrome**. Setup waits for the extension to contact the service and report a configuration version.
+
+Running the installer again offers **Repair or upgrade** and reuses the existing database and configuration, including the Telegram pairing and approved channels. See [manual verification](VERIFICATION.md) for a live playback and approval check.
+
+## Install from the ZIP or source
+
+The legacy ZIP is available for scripted deployments. Download `youtube-guardian-windows-x64.zip` from a release or workflow artifact. The scripts require PowerShell 7.3 or newer. Unblock and extract the ZIP locally before running them.
 
 ```powershell
 Unblock-File .\youtube-guardian-windows-x64.zip
@@ -14,9 +20,7 @@ Expand-Archive .\youtube-guardian-windows-x64.zip .\youtube-guardian
 Set-Location .\youtube-guardian
 ```
 
-For a development snapshot, sign in to GitHub and download the ZIP under **Artifacts** in a [successful GitHub Actions run](https://github.com/snirye/youtube-guardian/actions/workflows/build-windows.yml). Workflow artifacts are kept for 30 days.
-
-To build from source, install Git, Go 1.25.8 or newer, and Node.js 20 or newer. Run `./scripts/build.ps1` from the repository root. Run `./scripts/package.ps1` if you also need a ZIP.
+To build from source, use Git, Go 1.25.8 or newer, and Node.js 20 or newer. Run `./scripts/build.ps1` from the repository root on Windows, then `./scripts/package.ps1` to assemble both the ZIP and the setup executable under `release/`.
 
 ## Connect Telegram
 

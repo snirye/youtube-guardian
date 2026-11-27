@@ -7,3 +7,5 @@ test-results/
 playwright-report/
 /extension/dist/
 /release/
+/backend/cmd/setup/payload.zip
+/backend/cmd/setup/manifest_windows_amd64.syso

@@ -24,12 +24,12 @@ The suite checks zero frames and zero delivered media requests for an unknown ch
 
 ## Manual verification on Windows
 
-1. Install the service and extension with [the Windows guide](WINDOWS.md). Restart Windows and verify that the service is running before Chrome opens.
+1. On a clean Windows x64 PC, open the setup executable, confirm the UAC prompt, and pair a real Telegram account. Load the extension in the child’s standard Windows account and verify the wizard confirms a connection. Restart Windows and verify that the service starts automatically.
 2. Open a regular YouTube watch page in the child's profile. Verify that an unapproved video stays silent and hidden during initial load. Browse the home page and search results.
 3. Request approval once, click **Approve** in the parent's real Telegram chat, and verify that the video plays after the next configuration check. Change a previously allowed channel to blocked with `/block` and confirm that playback stops.
 4. Exercise sidebar navigation, browser Back/Forward, playlist next, autoplay, Shorts, and full-page embeds. Use ordinary and signed-in sessions. Test regular and adaptive streams, and investigate any approved video that stays blocked.
 5. Stop the Windows service while a video is playing. Verify that the overlay appears and playback stops, then start the service and verify recovery. Confirm that the request and logs survive restart and inspect `/status`.
-6. Check from the standard Windows account that the service files and SQLite data under ProgramData are inaccessible. Verify removal, then reinstall with the retained data.
+6. Check from the standard Windows account that the service files and SQLite data under ProgramData are inaccessible. Run the setup executable again, reload the extension, and verify the pairing, channel approvals, and recorded activity survived. Verify removal, then reinstall with the retained data.
 
 ## Current evidence and limits
 
