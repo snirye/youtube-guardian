@@ -4,6 +4,7 @@ on:
   pull_request:
   push:
     branches: [main]
+    tags: ['v*']
   workflow_dispatch:
 
 permissions:
@@ -49,3 +50,28 @@ jobs:
           if-no-files-found: error
           overwrite: true
           retention-days: 30
+
+
+  release-assets:
+    if: github.ref_type == 'tag'
+    needs: windows-x64
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download the Windows ZIP
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: youtube-guardian-windows-x64.zip
+          path: assets
+          skip-decompress: true
+
+      - name: Attach the ZIP to the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [[ "$(gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft)" != true ]]; then
+            printf 'Create a draft release for %s before uploading the package.\n' "$GITHUB_REF_NAME" >&2
+            exit 1
+          fi
+          gh release upload "$GITHUB_REF_NAME" assets/youtube-guardian-windows-x64.zip --repo "$GITHUB_REPOSITORY" --clobber

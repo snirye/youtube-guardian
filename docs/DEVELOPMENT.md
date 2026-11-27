@@ -44,3 +44,7 @@ The current MVP includes the code for all eight milestones. See [verification](V
 ## 8. Future Shorts filtering
 
 Hide Shorts surfaces and block direct Shorts navigation independently of channel decisions once the MVP is stable.
+
+## Package a GitHub release
+
+Create a draft release for the version tag before pushing the tag. Pushing a `v*` tag builds and tests the Windows package, then attaches `youtube-guardian-windows-x64.zip` to the draft. Check the asset and publish the release from GitHub. The same build remains available under Actions for 30 days.
