@@ -1,0 +1,9 @@
+/backend/guardian
+/backend/guardian.exe
+guardian.json
+guardian.sqlite*
+node_modules/
+test-results/
+playwright-report/
+/extension/dist/
+/release/

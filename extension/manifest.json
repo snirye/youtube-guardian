@@ -1,0 +1,80 @@
+{
+  "name": "YouTube Guardian",
+  "description": "Play YouTube videos from approved channels.",
+  "version": "0.1.0",
+  "manifest_version": 3,
+  "minimum_chrome_version": "120",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuUrJx4wcA2huIProA/yEE+JPPwm9qHMoKdbzFk+8psB7RMszSh9os9KIxydsBQ1e3ewP9RO4VoFLt7NTTVakplHLWVTyiQiK/BvSPJMElXyF7NJqwwGva360CTYNg2f8XH9yNc3feniDhA0smFigSUqZNqzQMVsbUgQF/314Xc7S5giys9hnwNWKOzh8ftlLo9MEyOfUa+Z/RD7Bt5+aZpksAMso9kwCofJLo+KVvGjJkfStOK2Tu5Vg6KRXWGYumsSfEXAPRWilhauuYrjuH02ObjgjVUaPSwNMsdwBB6ruxVSyXI/HD3b9VmbK74K0WsEIWdj7tD38XjCX6390kwIDAQAB",
+  "permissions": [
+    "declarativeNetRequest",
+    "storage",
+    "alarms",
+    "webNavigation"
+  ],
+  "host_permissions": [
+    "https://www.youtube.com/*",
+    "https://m.youtube.com/*",
+    "https://www.youtube-nocookie.com/*",
+    "https://*.googlevideo.com/*",
+    "http://127.0.0.1/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.youtube.com/*",
+        "https://m.youtube.com/*",
+        "https://www.youtube-nocookie.com/*"
+      ],
+      "js": [
+        "page.js"
+      ],
+      "run_at": "document_start",
+      "world": "MAIN",
+      "all_frames": true
+    },
+    {
+      "matches": [
+        "https://www.youtube.com/*",
+        "https://m.youtube.com/*",
+        "https://www.youtube-nocookie.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "css": [
+        "guardian.css"
+      ],
+      "run_at": "document_start",
+      "all_frames": true
+    }
+  ],
+  "declarative_net_request": {
+    "rule_resources": [
+      {
+        "id": "default_deny",
+        "enabled": true,
+        "path": "rules.json"
+      }
+    ]
+  },
+  "storage": {
+    "managed_schema": "managed.json"
+  },
+  "options_page": "options.html",
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "shorts.html"
+      ],
+      "matches": [
+        "https://www.youtube.com/*",
+        "https://m.youtube.com/*",
+        "https://www.youtube-nocookie.com/*"
+      ],
+      "use_dynamic_url": false
+    }
+  ]
+}

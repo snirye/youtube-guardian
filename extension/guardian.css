@@ -1,0 +1,55 @@
+:root:not([data-guardian-allowed]) video,
+:root:not([data-guardian-allowed]) audio,
+:root :is(video, audio):not([data-guardian-media]) {
+  visibility: hidden !important;
+}
+
+:root:not([data-guardian-show-shorts]) :is(
+  ytd-reel-shelf-renderer, ytm-reel-shelf-renderer, ytd-reel-item-renderer,
+  ytm-reel-item-renderer, ytd-shorts, ytd-guide-entry-renderer:has(a[href="/shorts"]),
+  ytd-mini-guide-entry-renderer:has(a[href="/shorts"]),
+  ytd-rich-section-renderer:has(ytd-reel-shelf-renderer),
+  ytd-rich-shelf-renderer[is-shorts], ytm-shorts-lockup-view-model,
+  yt-shorts-lockup-view-model, yt-shorts-lockup-view-model-v2,
+  ytd-video-renderer:has(a[href^="/shorts/"]),
+  ytd-compact-video-renderer:has(a[href^="/shorts/"]),
+  ytd-grid-video-renderer:has(a[href^="/shorts/"]),
+  ytd-rich-item-renderer:has(a[href^="/shorts/"]),
+  ytm-video-with-context-renderer:has(a[href^="/shorts/"]),
+  yt-lockup-view-model:has(a[href^="/shorts/"])
+) {
+  display: none !important;
+}
+
+#guardian-overlay {
+  all: initial;
+  direction: rtl;
+  position: fixed;
+  inset: auto 24px 24px auto;
+  z-index: 2147483647;
+  max-width: min(360px, calc(100vw - 48px));
+  padding: 20px;
+  box-sizing: border-box;
+  color: #fffcf8;
+  background: #24201d;
+  border: 1px solid #746450;
+  border-radius: 12px;
+  box-shadow: 0 8px 28px #0005;
+  text-align: right;
+  font: 16px/1.55 system-ui, sans-serif;
+}
+
+#guardian-overlay strong { font-size: 22px; }
+#guardian-overlay p { margin: 8px 0 12px; }
+#guardian-overlay button {
+  font: inherit;
+  font-weight: 600;
+  border: 0;
+  border-radius: 6px;
+  padding: 8px 14px;
+  background: #ffe0a4;
+  color: #21170b;
+  cursor: pointer;
+}
+#guardian-overlay button:disabled { opacity: .75; cursor: default; }
+#guardian-overlay button[hidden] { display: none; }
