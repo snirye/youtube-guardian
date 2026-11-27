@@ -1,12 +1,9 @@
 package telegram
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"strconv"
@@ -19,21 +16,20 @@ import (
 type Bot struct {
 	data     store.Store
 	parentID int64
-	baseURL  string
-	token    string
-	http     *http.Client
+	client
 }
 
 func New(data store.Store, token string, parentID int64, transport http.RoundTripper) *Bot {
-	return &Bot{
-		data: data, parentID: parentID, token: token, baseURL: "https://api.telegram.org",
-		http: &http.Client{Transport: transport, Timeout: 30 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error {
-			return http.ErrUseLastResponse
-		}},
-	}
+	return &Bot{data: data, parentID: parentID, client: newClient(token, transport)}
 }
 
-type user struct{ ID int64 }
+type user struct {
+	ID            int64
+	IsBot         bool `json:"is_bot"`
+	Username      string
+	CanManageBots bool `json:"can_manage_bots"`
+}
+
 type chat struct {
 	ID   int64
 	Type string
@@ -51,9 +47,15 @@ type callback struct {
 	Data    string
 }
 type update struct {
-	ID       int64 `json:"update_id"`
-	Message  *message
-	Callback *callback `json:"callback_query"`
+	ID         int64 `json:"update_id"`
+	Message    *message
+	Callback   *callback   `json:"callback_query"`
+	ManagedBot *managedBot `json:"managed_bot"`
+}
+
+type managedBot struct {
+	User user
+	Bot  user
 }
 type button struct {
 	Text string `json:"text"`
@@ -72,41 +74,6 @@ var commands = []command{
 	{"allow", "Approve a channel by ID"}, {"block", "Block a channel by ID"}, {"channels", "List approved channels"},
 	{"logs", "View recent activity"}, {"shorts_on", "Hide and block Shorts"}, {"shorts_off", "Use channel rules for Shorts"},
 	{"help", "List commands"},
-}
-
-func (b *Bot) call(ctx context.Context, method string, payload any, output any) error {
-	body, err := json.Marshal(payload)
-	if err != nil {
-		return err
-	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, b.baseURL+"/bot"+b.token+"/"+method, bytes.NewReader(body))
-	if err != nil {
-		return fmt.Errorf("build Telegram %s request", method)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	response, err := b.http.Do(req)
-	if err != nil {
-		// Transport errors can include the bot token in the request URL.
-		return fmt.Errorf("Telegram %s connection failed", method)
-	}
-	defer response.Body.Close()
-	var result struct {
-		OK        bool
-		Result    json.RawMessage
-		ErrorCode int `json:"error_code"`
-	}
-	if err := json.NewDecoder(io.LimitReader(response.Body, 4<<20)).Decode(&result); err != nil {
-		return fmt.Errorf("Telegram %s returned an invalid response (HTTP %d)", method, response.StatusCode)
-	}
-	if response.StatusCode != http.StatusOK || !result.OK {
-		return fmt.Errorf("Telegram %s failed (HTTP %d, API %d)", method, response.StatusCode, result.ErrorCode)
-	}
-	if output != nil {
-		if err := json.Unmarshal(result.Result, output); err != nil {
-			return fmt.Errorf("Telegram %s returned invalid data", method)
-		}
-	}
-	return nil
 }
 
 func (b *Bot) Run(ctx context.Context) {

@@ -5,6 +5,8 @@ param(
     [ValidateRange(1, 3650)][int]$RetentionDays = 30,
     [string]$ParentTelegramUserId,
     [SecureString]$TelegramBotToken,
+    [switch]$CreateManagedTelegramBot,
+    [SecureString]$TelegramManagerBotToken,
     [switch]$ReuseConfiguration
 )
 Set-StrictMode -Version Latest
@@ -25,6 +27,12 @@ $system = [System.Security.Principal.SecurityIdentifier]::new('S-1-5-18')
 $localService = [System.Security.Principal.SecurityIdentifier]::new('S-1-5-19')
 $installer = [System.Security.Principal.WindowsIdentity]::GetCurrent().User
 
+if ($CreateManagedTelegramBot -and ($ReuseConfiguration -or $TelegramBotToken -or $ParentTelegramUserId)) {
+    throw 'Managed mode requires a new installation and a dedicated manager bot.'
+}
+if ($TelegramManagerBotToken -and !$CreateManagedTelegramBot) {
+    throw 'Use -CreateManagedTelegramBot with a manager bot token.'
+}
 if (Get-Service $service -ErrorAction SilentlyContinue) {
     throw 'The YouTube Guardian service already exists. Run uninstall.ps1 before reinstalling.'
 }
@@ -85,13 +93,38 @@ if ($ReuseConfiguration) {
         throw 'The existing configuration has an invalid API token or port.'
     }
 } else {
-    if (!$ParentTelegramUserId) { $ParentTelegramUserId = Read-Host 'Parent Telegram numeric user ID' }
+    $telegramSetup = $null
+    if ($CreateManagedTelegramBot) {
+        if (!$TelegramManagerBotToken) {
+            $TelegramManagerBotToken = Read-Host 'Telegram manager bot token' -AsSecureString
+        }
+        $managerToken = [System.Net.NetworkCredential]::new('', $TelegramManagerBotToken).Password
+        try {
+            $telegramSetup = ($managerToken | & $binary -telegram-setup managed) | ConvertFrom-Json -AsHashtable
+        } finally {
+            $managerToken = $null
+        }
+        $botToken = $telegramSetup['bot_token']
+    } else {
+        if (!$TelegramBotToken) { $TelegramBotToken = Read-Host 'BotFather token' -AsSecureString }
+        $botToken = [System.Net.NetworkCredential]::new('', $TelegramBotToken).Password
+        if (!$ParentTelegramUserId) {
+            $telegramSetup = ($botToken | & $binary -telegram-setup pair) | ConvertFrom-Json -AsHashtable
+        }
+    }
+
     $parentId = 0L
-    if (![long]::TryParse($ParentTelegramUserId, [ref]$parentId) -or $parentId -le 0) {
+    if ($telegramSetup) {
+        $parentId = [long]$telegramSetup['parent_id']
+        $account = if ($telegramSetup['parent_username']) { '@' + $telegramSetup['parent_username'] } else { 'Telegram user' }
+        Write-Host "Detected $account (ID $parentId) for @$($telegramSetup['bot_username'])."
+        if ((Read-Host 'Use this account for approvals? [y/N]') -notmatch '^(y|yes)$') {
+            throw 'Telegram setup canceled.'
+        }
+    } elseif (![long]::TryParse($ParentTelegramUserId, [ref]$parentId)) {
         throw 'Enter a positive numeric Telegram user ID.'
     }
-    if (!$TelegramBotToken) { $TelegramBotToken = Read-Host 'BotFather token' -AsSecureString }
-    $botToken = [System.Net.NetworkCredential]::new('', $TelegramBotToken).Password
+    if ($parentId -le 0) { throw 'Enter a positive numeric Telegram user ID.' }
     if ($botToken -notmatch '^[0-9]+:[A-Za-z0-9_-]{15,}$') { throw 'The Telegram bot token format is invalid.' }
     $apiToken = [Convert]::ToHexString([System.Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
     [System.IO.FileSystemAclExtensions]::Create([System.IO.DirectoryInfo]::new($data), $acl)
@@ -103,6 +136,10 @@ if ($ReuseConfiguration) {
         retention_days = $RetentionDays
     } | ConvertTo-Json | Set-Content -LiteralPath $configPath -Encoding utf8
     $botToken = $null
+    if ($telegramSetup) {
+        Write-Host "Open https://t.me/$($telegramSetup['bot_username']) and tap Start in Telegram if prompted."
+        $telegramSetup = $null
+    }
 }
 
 if (Test-Path -LiteralPath $program) {

@@ -22,9 +22,16 @@ import (
 
 func main() {
 	configPath := flag.String("config", "guardian.json", "path to the backend JSON configuration")
+	telegramMode := flag.String("telegram-setup", "", "pair an existing Telegram bot or create a managed one (pair or managed)")
 	flag.Parse()
 
-	if err := start(*configPath); err != nil {
+	var err error
+	if *telegramMode != "" {
+		err = setupTelegram(*telegramMode)
+	} else {
+		err = start(*configPath)
+	}
+	if err != nil {
 		log.Print(err)
 		os.Exit(1)
 	}

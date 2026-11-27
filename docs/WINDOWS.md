@@ -16,29 +16,27 @@ Set-Location .\youtube-guardian
 
 To build from source instead, install Git, Go 1.25.8 or newer, and Node.js 20 or newer. Run `./scripts/build.ps1` from the repository root. Run `./scripts/package.ps1` if you also need a ZIP.
 
-## Prepare Telegram
+## Connect Telegram
 
-1. Create a dedicated bot with Telegram's [BotFather](https://t.me/BotFather). Save the bot token privately. Open the bot from the parent's account and send `/start`.
-2. Find the numeric ID of the parent's Telegram account. The following PowerShell calls Telegram for the bot's unread private messages. Run it before installing the service, since the service will also poll the bot. If the chat is empty, send the bot another message from the parent's account and try again.
+For a personal installation, create a dedicated bot in Telegram with [BotFather](https://t.me/BotFather) using `/newbot`. Paste its token when the installer asks. Scan the QR code with the parent's phone or open the displayed link, then tap **Start**. Check the account shown in PowerShell and confirm it. The installer reads the parent ID from the private chat.
+
+The QR expires after three minutes. Run the installer again for a fresh code. For scripted installations, supply `-ParentTelegramUserId` and `-TelegramBotToken` explicitly. The token argument accepts a PowerShell `SecureString`.
+
+### Create a managed bot with QR
+
+This option uses Telegram's [Managed Bots](https://core.telegram.org/api/bots/managed-bots) to create the family's bot during setup. It is intended for administrators who already have a dedicated manager bot. In the BotFather Mini App, enable **Bot Management Mode** for that bot. Anyone with its credentials can retrieve or rotate tokens for the bots it manages, so use a manager you control.
+
+Run the installer as administrator with the managed option.
 
 ```powershell
-$secure = Read-Host 'BotFather token' -AsSecureString
-$token = [System.Net.NetworkCredential]::new('', $secure).Password
-try {
-    (Invoke-RestMethod "https://api.telegram.org/bot$token/getUpdates").result |
-        Where-Object { $_.message.chat.type -eq 'private' -and -not $_.message.from.is_bot } |
-        ForEach-Object { $_.message.from | Select-Object id, first_name, username } |
-        Sort-Object id -Unique
-} finally {
-    $token = $null
-}
+pwsh -NoProfile -ExecutionPolicy RemoteSigned -File ./scripts/install.ps1 -CreateManagedTelegramBot
 ```
 
-Only the configured user ID can manage channels, and commands and buttons are accepted only in that user's private chat with the bot. Keep the bot token in the backend configuration.
+The installer asks for the manager bot's token. When the parent scans the QR, Telegram offers **Create Bot**. Keep the suggested username so the installer can identify this bot. Confirm the detected parent account in PowerShell, open the new bot from Telegram, and tap **Start**. The installer fetches the new bot's credentials directly from Telegram and saves them in the protected service configuration. Only the resulting family bot credentials are used by the Windows service.
 
 ## Install the service and load Chrome
 
-1. Open PowerShell 7 **as administrator** in the extracted package folder or the built repository root. Run `pwsh -NoProfile -ExecutionPolicy RemoteSigned -File ./scripts/install.ps1`. Enter the parent's Telegram ID and the bot token when prompted. The installer validates the local API and registers `YouTubeGuardian` for automatic startup and recovery.
+1. Open PowerShell 7 **as administrator** in the extracted package folder or the built repository root. Run `pwsh -NoProfile -ExecutionPolicy RemoteSigned -File ./scripts/install.ps1`. Follow the Telegram pairing prompts above. The installer validates the local API and registers `YouTubeGuardian` for automatic startup and recovery.
 2. Sign in to the child's standard Windows account. In Chrome, open `chrome://extensions`, turn on **Developer mode**, and use **Load unpacked** to select the `YouTubeGuardian\extension` folder under Program Files. The installer prints the exact path. In `chrome://policy`, select **Reload policies** and check that the extension receives its managed settings. Restart Chrome or reload existing YouTube tabs after first installation.
 3. Send `/status` to the bot. With Chrome open, allow roughly 30 seconds for a heartbeat. Then use the [manual verification checklist](VERIFICATION.md).
 
