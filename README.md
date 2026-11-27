@@ -4,6 +4,8 @@ YouTube Guardian pairs a Chrome MV3 extension with a local Windows service. The 
 
 **[Download YouTube Guardian for Windows x64](https://github.com/snirye/youtube-guardian/releases)**
 
+Download `YouTubeGuardianSetup.exe` from the release assets and open it to install the Windows service, pair Telegram, and check that the Chrome extension has connected.
+
 - [Development builds from GitHub Actions](https://github.com/snirye/youtube-guardian/actions/workflows/build-windows.yml)
 - [Windows installation and removal](docs/WINDOWS.md)
 - [Browser tests and enforcement limits](docs/VERIFICATION.md)
