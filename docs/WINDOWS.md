@@ -4,8 +4,8 @@ Run on Windows 10 or 11 with a separate administrator account and a standard Win
 
 ## Download the Windows x64 package
 
-1. Sign in to GitHub and open the [Build Windows package workflow](https://github.com/snirye/youtube-guardian/actions/workflows/build-windows.yml). Open a successful run. Artifacts stay available for 30 days to users with access to the repository.
-2. In the run summary under **Artifacts**, download `youtube-guardian-windows-x64.zip`. It contains the compiled service, Chrome extension, installation scripts, and this guide.
+1. Open the [GitHub Releases page](https://github.com/snirye/youtube-guardian/releases) and choose the preview release you want to install.
+2. Under **Assets**, download `youtube-guardian-windows-x64.zip`. It contains the compiled service, Chrome extension, installation scripts, and this guide.
 3. Unblock and extract the downloaded ZIP into a local folder. This lets PowerShell run the extracted scripts with the process-level `RemoteSigned` policy.
 
 ```powershell
@@ -14,7 +14,9 @@ Expand-Archive .\youtube-guardian-windows-x64.zip .\youtube-guardian
 Set-Location .\youtube-guardian
 ```
 
-To build from source instead, install Git, Go 1.25.8 or newer, and Node.js 20 or newer. Run `./scripts/build.ps1` from the repository root. Run `./scripts/package.ps1` if you also need a ZIP.
+For a development snapshot, sign in to GitHub and download the ZIP under **Artifacts** in a [successful GitHub Actions run](https://github.com/snirye/youtube-guardian/actions/workflows/build-windows.yml). Workflow artifacts are kept for 30 days.
+
+To build from source, install Git, Go 1.25.8 or newer, and Node.js 20 or newer. Run `./scripts/build.ps1` from the repository root. Run `./scripts/package.ps1` if you also need a ZIP.
 
 ## Connect Telegram
 

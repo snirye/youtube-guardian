@@ -2,7 +2,9 @@
 
 YouTube Guardian pairs a Chrome MV3 extension with a local Windows service. The extension lets the child browse YouTube, then checks the current video's channel before playback. A private Telegram bot manages channel approvals. The backend stores settings and activity in SQLite and uses an outbound Telegram connection.
 
-- [Download a Windows x64 build from GitHub Actions](https://github.com/snirye/youtube-guardian/actions/workflows/build-windows.yml)
+**[Download YouTube Guardian for Windows x64](https://github.com/snirye/youtube-guardian/releases)**
+
+- [Development builds from GitHub Actions](https://github.com/snirye/youtube-guardian/actions/workflows/build-windows.yml)
 - [Windows installation and removal](docs/WINDOWS.md)
 - [Browser tests and enforcement limits](docs/VERIFICATION.md)
 - [Implementation plan](docs/IMPLEMENTATION_PLAN.md)
